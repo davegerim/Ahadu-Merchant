@@ -1,18 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/formatting/app_amount_format.dart';
 import '../../../../core/theme/colors.dart';
+import '../../../auth/presentation/providers/merchant_session_provider.dart';
 import '../../../transactions/domain/models/transaction.dart';
+import '../../../transactions/presentation/providers/transactions_providers.dart';
 import 'package:intl/intl.dart';
 import '../providers/dashboard_index_provider.dart';
-import 'package:go_router/go_router.dart';
 
-class RecentTransactionsList extends ConsumerWidget {
+class RecentTransactionsList extends ConsumerStatefulWidget {
   const RecentTransactionsList({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currencyFormatter = NumberFormat.currency(symbol: '\$');
+  ConsumerState<RecentTransactionsList> createState() =>
+      _RecentTransactionsListState();
+}
+
+class _RecentTransactionsListState extends ConsumerState<RecentTransactionsList> {
+  static final DateFormat _apiDateFmt = DateFormat('yyyy-MM-dd');
+
+  List<Transaction> _items = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadRecentTransactions());
+  }
+
+  /// Same POST …/merchant-registrations/transactions as the Transactions tab,
+  /// with `fromDate` and `toDate` both set to **today** (local calendar day),
+  /// matching the single-day payload shape from the API contract.
+  Future<void> _loadRecentTransactions() async {
+    final session = ref.read(merchantSessionProvider);
+    if (session == null) {
+      if (!mounted) return;
+      setState(() {
+        _items = mockTransactions.take(3).toList();
+        _loading = false;
+      });
+      return;
+    }
+
+    final now = DateTime.now();
+    final day = DateTime(now.year, now.month, now.day);
+    final dayStr = _apiDateFmt.format(day);
+
+    try {
+      final list = await ref.read(transactionsRepositoryProvider).fetchTransactions(
+            merchantCode: session.code,
+            merchantSecret: session.secret,
+            fromDate: dayStr,
+            toDate: dayStr,
+          );
+      list.sort((a, b) => b.date.compareTo(a.date));
+      if (!mounted) return;
+      setState(() {
+        _items = list.take(3).toList();
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _items = [];
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final amountFormatter = appAmountFormatter();
     final dateFormatter = DateFormat('MMM dd, yyyy - hh:mm a');
 
     return Container(
@@ -60,18 +119,31 @@ class RecentTransactionsList extends ConsumerWidget {
             ),
           ),
           const Divider(height: 1, color: AppPalette.divider),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: 3, // Show only top 3 on dashboard
+            itemCount: _items.length,
             separatorBuilder: (context, index) => const Divider(height: 1, color: AppPalette.divider, indent: 20, endIndent: 20),
             itemBuilder: (context, index) {
-              final tx = mockTransactions[index];
+              final tx = _items[index];
               final isPositive = tx.amount > 0;
               
               return InkWell(
                 onTap: () {
-                  context.push('/transaction-detail', extra: tx);
+                  ref.read(dashboardIndexProvider.notifier).setIndex(1);
+                  ref.read(pendingTransactionDetailProvider.notifier).set(tx);
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -117,7 +189,7 @@ class RecentTransactionsList extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${isPositive ? '+' : ''}${currencyFormatter.format(tx.amount)}',
+                            '${isPositive ? '+' : ''}${amountFormatter.format(tx.amount)}',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                               color: isPositive ? AppPalette.success : AppPalette.textPrimary,

@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../providers/auth_providers.dart';
+import '../providers/merchant_session_provider.dart';
 import 'package:go_router/go_router.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -32,9 +33,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
+      final merchantCode = _merchantIdController.text.trim();
+      final merchantSecret = _secretController.text.trim();
       await ref.read(authRepositoryProvider).validateMerchant(
-            merchantCode: _merchantIdController.text.trim(),
-            merchantSecret: _secretController.text.trim(),
+            merchantCode: merchantCode,
+            merchantSecret: merchantSecret,
+          );
+
+      ref.read(merchantSessionProvider.notifier).setCredentials(
+            merchantCode: merchantCode,
+            merchantSecret: merchantSecret,
           );
 
       if (!mounted) return;

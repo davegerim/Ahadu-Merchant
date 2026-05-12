@@ -64,16 +64,6 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () {},
             ),
             _buildProfileMenu(
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'Bank Accounts',
-              onTap: () {},
-            ),
-            _buildProfileMenu(
-              icon: Icons.security,
-              title: 'Security & PIN',
-              onTap: () {},
-            ),
-            _buildProfileMenu(
               icon: Icons.help_outline,
               title: 'Help & Support',
               onTap: () {},

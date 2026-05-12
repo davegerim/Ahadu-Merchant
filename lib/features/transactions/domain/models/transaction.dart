@@ -6,6 +6,21 @@ class Transaction {
   final String status; // 'completed', 'pending', 'failed'
   final String type; // 'payment', 'refund'
 
+  /// Populated from merchant-registrations/transactions API when available.
+  final String? debitAccountName;
+  final String? debitAccount;
+  final double? debitAmount;
+  final String? creditAccountName;
+  final String? creditAccount;
+  final double? creditAmount;
+  final int? branchCode;
+  final int? batchNumber;
+  final String? narrativeDetail1;
+  final String? narrativeDetail2;
+  final String? narrativeDetail3;
+  final DateTime? transactionValueDate;
+  final DateTime? enteredOn;
+
   Transaction({
     required this.id,
     required this.title,
@@ -13,6 +28,19 @@ class Transaction {
     required this.date,
     required this.status,
     required this.type,
+    this.debitAccountName,
+    this.debitAccount,
+    this.debitAmount,
+    this.creditAccountName,
+    this.creditAccount,
+    this.creditAmount,
+    this.branchCode,
+    this.batchNumber,
+    this.narrativeDetail1,
+    this.narrativeDetail2,
+    this.narrativeDetail3,
+    this.transactionValueDate,
+    this.enteredOn,
   });
 }
 

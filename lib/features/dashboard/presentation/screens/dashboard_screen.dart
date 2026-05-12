@@ -69,7 +69,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: const [
                     StatCard(
                       title: 'Today\'s Sales',
-                      amount: '\$4,200',
+                      amount: '4,200',
                       change: '12%',
                       isPositive: true,
                       icon: Icons.point_of_sale,
@@ -83,7 +83,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     StatCard(
                       title: 'Refunds',
-                      amount: '\$150',
+                      amount: '150',
                       change: '1%',
                       isPositive: false,
                       icon: Icons.assignment_return,
