@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 
 import '../../../../core/formatting/app_amount_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../domain/models/transaction.dart';
-import '../../pdf/transaction_receipt_pdf.dart';
 
 class TransactionDetailScreen extends ConsumerStatefulWidget {
   final Transaction transaction;
@@ -29,32 +27,6 @@ class TransactionDetailScreen extends ConsumerStatefulWidget {
 
 class _TransactionDetailScreenState
     extends ConsumerState<TransactionDetailScreen> {
-  bool _receiptLoading = false;
-
-  Future<void> _downloadReceipt() async {
-    if (_receiptLoading) return;
-    setState(() => _receiptLoading = true);
-    try {
-      final t = widget.transaction;
-      final bytes = await buildTransactionReceiptPdf(t);
-      var safeName = t.id.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-      if (safeName.isEmpty) safeName = 'transaction';
-      if (safeName.length > 64) safeName = safeName.substring(0, 64);
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: 'receipt_$safeName.pdf',
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not create receipt: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _receiptLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final transaction = widget.transaction;
@@ -166,35 +138,6 @@ class _TransactionDetailScreenState
                       _buildDetailRow('Type', _typeDisplayLabel(transaction)),
                       ..._ledgerDetailRows(transaction, amountFormatter, dateFormatter),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  height: 56,
-                  child: OutlinedButton(
-                    onPressed: _receiptLoading ? null : _downloadReceipt,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppPalette.primary),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _receiptLoading
-                        ? SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppPalette.primary,
-                            ),
-                          )
-                        : Text(
-                            'Download Receipt',
-                            style: GoogleFonts.inter(
-                              color: AppPalette.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                   ),
                 ),
               ],

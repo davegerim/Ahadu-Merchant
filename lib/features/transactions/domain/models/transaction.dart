@@ -21,6 +21,9 @@ class Transaction {
   final DateTime? transactionValueDate;
   final DateTime? enteredOn;
 
+  /// When present, used as the path key for `GET /api/v1/receipt/{…}`; otherwise [id] is used.
+  final String? receiptReference;
+
   Transaction({
     required this.id,
     required this.title,
@@ -41,6 +44,7 @@ class Transaction {
     this.narrativeDetail3,
     this.transactionValueDate,
     this.enteredOn,
+    this.receiptReference,
   });
 }
 

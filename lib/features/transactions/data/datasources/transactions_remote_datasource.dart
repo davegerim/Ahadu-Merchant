@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../domain/models/transaction.dart';
+import '../../pdf/transaction_receipt_pdf.dart';
 
 class TransactionsRemoteDataSource {
   TransactionsRemoteDataSource(this._dio);
@@ -10,6 +13,18 @@ class TransactionsRemoteDataSource {
 
   static const String _transactionsUrl =
       'http://10.20.0.45:7035/api/v1/merchant-registrations/transactions';
+
+  static const String _receiptHost = '10.20.0.45';
+  static const int _receiptPort = 7035;
+
+  /// Receipt GET must not inherit global Dio `Content-Type: application/json` (some servers error on GET).
+  static final Dio _receiptDio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 20),
+      sendTimeout: const Duration(seconds: 20),
+    ),
+  );
 
   Future<List<Transaction>> fetchTransactions({
     required String merchantCode,
@@ -44,6 +59,111 @@ class TransactionsRemoteDataSource {
       debugPrint('[TXNS][ERROR][BODY] ${e.response?.data}');
       rethrow;
     }
+  }
+
+  /// `GET /api/v1/receipt/{reference}` — returns PDF bytes, or JSON that we map to the receipt layout.
+  Future<Uint8List> fetchReceiptDocument(
+    String receiptReference, {
+    String? merchantCode,
+    String? merchantSecret,
+  }) async {
+    final ref = receiptReference.trim();
+    if (ref.isEmpty) {
+      throw ArgumentError('Receipt reference is empty');
+    }
+
+    final query = <String, String>{};
+    final code = merchantCode?.trim();
+    final secret = merchantSecret?.trim();
+    if (code != null && code.isNotEmpty) {
+      query['merchantCode'] = code;
+    }
+    if (secret != null && secret.isNotEmpty) {
+      query['merchantSecret'] = secret;
+    }
+
+    final uri = Uri(
+      scheme: 'http',
+      host: _receiptHost,
+      port: _receiptPort,
+      pathSegments: ['api', 'v1', 'receipt', ref],
+      queryParameters: query.isEmpty ? null : query,
+    );
+
+    debugPrint('[RECEIPT][GET] $uri');
+
+    final response = await _receiptDio.get<List<int>>(
+      uri.toString(),
+      options: Options(
+        responseType: ResponseType.bytes,
+        validateStatus: (status) => status != null && status >= 200 && status < 300,
+        headers: <String, String>{
+          'Accept': 'application/pdf, application/json, */*',
+        },
+      ),
+    );
+
+    final bytes = Uint8List.fromList(response.data ?? <int>[]);
+    final ct = _headerContentType(response);
+
+    if (_isPdfBytes(bytes) ||
+        ct.contains('application/pdf') ||
+        (ct.contains('application/octet-stream') && _isPdfBytes(bytes))) {
+      return bytes;
+    }
+
+    Map<String, dynamic>? map;
+    try {
+      final text = utf8.decode(bytes);
+      final decoded = jsonDecode(text);
+      if (decoded is Map<String, dynamic>) {
+        map = decoded;
+      } else if (decoded is Map) {
+        map = Map<String, dynamic>.from(decoded);
+      }
+    } catch (e) {
+      debugPrint('[RECEIPT][JSON][PARSE][ERROR] $e');
+    }
+
+    if (map != null) {
+      var payload = map;
+      for (final key in ['data', 'receipt', 'payload', 'result', 'item']) {
+        final inner = payload[key];
+        if (inner is Map<String, dynamic>) {
+          payload = inner;
+          break;
+        }
+        if (inner is Map) {
+          payload = Map<String, dynamic>.from(inner);
+          break;
+        }
+      }
+      final tx = _tryMapToTransaction(payload);
+      if (tx != null) {
+        return buildTransactionReceiptPdf(tx);
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      message:
+          'Receipt could not be used: expected PDF or known transaction JSON (content-type: $ct, ${bytes.length} bytes)',
+      response: response,
+    );
+  }
+
+  String _headerContentType(Response<dynamic> response) {
+    final raw = response.headers.value('content-type');
+    if (raw == null || raw.isEmpty) return '';
+    return raw.toLowerCase();
+  }
+
+  bool _isPdfBytes(Uint8List bytes) {
+    return bytes.length >= 4 &&
+        bytes[0] == 0x25 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x44 &&
+        bytes[3] == 0x46;
   }
 
   List<Transaction> _parseTransactionsResponse(dynamic data) {
@@ -128,6 +248,12 @@ class TransactionsRemoteDataSource {
         narrativeDetail3: _readString(m, const ['narrativeDetail3']),
         transactionValueDate: valueDate,
         enteredOn: enteredOn,
+        receiptReference: _readString(m, const [
+          'receiptReference',
+          'receiptNo',
+          'receiptId',
+          'mbReceiptNo',
+        ]),
       );
     } catch (_) {
       return null;

@@ -1,3 +1,4 @@
+import '../../domain/models/merchant_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 
@@ -7,7 +8,7 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
 
   @override
-  Future<void> validateMerchant({
+  Future<MerchantProfile> validateMerchant({
     required String merchantCode,
     required String merchantSecret,
   }) {

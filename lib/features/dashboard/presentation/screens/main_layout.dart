@@ -5,6 +5,7 @@ import 'dashboard_screen.dart';
 import '../providers/dashboard_index_provider.dart';
 import '../../../transactions/presentation/screens/transactions_screen.dart';
 import '../../../reports/presentation/screens/reports_screen.dart';
+import '../../../profile/presentation/providers/profile_subview_provider.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
 class MainLayoutScreen extends ConsumerWidget {
@@ -21,6 +22,12 @@ class MainLayoutScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(dashboardIndexProvider);
     final isDesktop = MediaQuery.of(context).size.width >= 800;
+
+    ref.listen<int>(dashboardIndexProvider, (previous, next) {
+      if (next != 3) {
+        ref.read(profileSubviewProvider.notifier).showMain();
+      }
+    });
 
     return Scaffold(
       body: isDesktop

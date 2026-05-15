@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../domain/models/transaction.dart';
 import '../../domain/repositories/transactions_repository.dart';
 import '../datasources/transactions_remote_datasource.dart';
@@ -19,6 +21,19 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
       merchantSecret: merchantSecret,
       fromDate: fromDate,
       toDate: toDate,
+    );
+  }
+
+  @override
+  Future<Uint8List> fetchReceiptDocument(
+    String receiptReference, {
+    String? merchantCode,
+    String? merchantSecret,
+  }) {
+    return _remoteDataSource.fetchReceiptDocument(
+      receiptReference,
+      merchantCode: merchantCode,
+      merchantSecret: merchantSecret,
     );
   }
 }

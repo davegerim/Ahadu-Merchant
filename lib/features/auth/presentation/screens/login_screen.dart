@@ -35,7 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final merchantCode = _merchantIdController.text.trim();
       final merchantSecret = _secretController.text.trim();
-      await ref.read(authRepositoryProvider).validateMerchant(
+      final profile = await ref.read(authRepositoryProvider).validateMerchant(
             merchantCode: merchantCode,
             merchantSecret: merchantSecret,
           );
@@ -43,6 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ref.read(merchantSessionProvider.notifier).setCredentials(
             merchantCode: merchantCode,
             merchantSecret: merchantSecret,
+            profile: profile,
           );
 
       if (!mounted) return;

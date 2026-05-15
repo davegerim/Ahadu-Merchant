@@ -59,7 +59,7 @@ class DashboardScreen extends ConsumerWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final width = constraints.maxWidth;
-                final crossAxisCount = width > 800 ? 4 : 2;
+                final crossAxisCount = 2;
                 final spacing = 16.0;
                 final totalSpacing = spacing * (crossAxisCount - 1);
                 final cardWidth = (width - totalSpacing) / crossAxisCount;
@@ -80,20 +80,6 @@ class DashboardScreen extends ConsumerWidget {
                       change: '4%',
                       isPositive: true,
                       icon: Icons.receipt_long,
-                    ),
-                    StatCard(
-                      title: 'Refunds',
-                      amount: '150',
-                      change: '1%',
-                      isPositive: false,
-                      icon: Icons.assignment_return,
-                    ),
-                    StatCard(
-                      title: 'Active Customers',
-                      amount: '89',
-                      change: '22%',
-                      isPositive: true,
-                      icon: Icons.people,
                     ),
                   ].map((card) => SizedBox(width: cardWidth, child: card)).toList(),
                 );
